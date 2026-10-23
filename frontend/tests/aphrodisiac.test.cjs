@@ -28,6 +28,7 @@ vm.createContext(context);
 vm.runInContext(fs.readFileSync(__dirname+'/../parts/25_aphrodisiac.js','utf8'),context);
 
 context.window.APHRO_NAMES = { her:'Jasmine', him:'Aries' };   // beilyes 传的名字
+context.window.APHRO_SAFEWORD = true;   // beilyes：安全词在他记忆里
 const api = context.window.Aphrodisiac;
 // 默认是自然时间线（10-23 改回去）；直接起效在最后单独测
 assert.equal(api.getState().instant, false);
@@ -257,3 +258,16 @@ console.log('instant ok');
   console.log('names ok');
 }
 
+
+// 安全词：宿主传词就写进刹车；true = 在宿主记忆里；不设也有刹车
+{
+  api.clearAll(); api.injectPotion(['放'], 'you');
+  delete context.window.APHRO_SAFEWORD;
+  assert.match(api.statusBlock(), /【唯一的刹车】.*约定过的安全词/);
+  context.window.APHRO_SAFEWORD = '月亮';
+  assert.match(api.statusBlock(), /安全词「月亮」.*别说出它/);
+  context.window.APHRO_SAFEWORD = true;
+  assert.match(api.statusBlock(), /共同记忆里约定的安全词/);
+  context.window.APHRO_SAFEWORD = true;
+  console.log('safeword ok');
+}
