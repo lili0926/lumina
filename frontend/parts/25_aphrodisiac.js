@@ -579,6 +579,19 @@
     saveAphro(aphro);
     return p;
   }
+  // 程序刹车：宿主在把她这句话发给模型之前调用 checkSafeword(她的话)。
+  // 设了具体的安全词（APHRO_SAFEWORD 字符串，或她在调香室里设的）且这句话里有 → 冻结读数并记下，下一轮提示词告诉他。
+  // 安全词只在宿主记忆里（APHRO_SAFEWORD === true）或没设时，程序不知道是哪个词，返回 false。
+  function checkSafeword(text){
+    const sw = safeword(), p = aphro.active[0];
+    if(sw.mode !== "word" || !p) return false;
+    const norm = x => String(x || "").replace(/\s+/g, "").toLowerCase();
+    if(!norm(text).includes(norm(sw.word))) return false;
+    freezeControl(p);
+    p.safewordAt = Date.now();
+    saveAphro(aphro);
+    return true;
+  }
   function resumeControl(potion){
     tickAphro();
     const p = potion || aphro.active[0];
@@ -589,6 +602,7 @@
     p.injectedAt = Date.now() - frozenE;
     if(p.personality) p.personality.createdAt = p.injectedAt;
     p.controlFrozen = false;
+    delete p.safewordAt;
     delete p.controlFrozenAt;
     delete p.controlFrozenElapsed;
     delete p.controlFrozenLevel;
@@ -662,6 +676,8 @@
 
     let block = "【当前生效配方 · 每轮都要参考】\n";
       const potion = aphro.active[0];
+      // 程序刹车生效（checkSafeword 认出了安全词）：整段强制的戏都不给，只叫他停
+      if(potion.safewordAt) return "【配方 · 她说了安全词】" + names().her + "刚才说出了你们约定的安全词，药效已经被程序冻结。马上停下所有动作、退出这场戏，用平常的你认真问她怎么了、哪里不舒服。在她明确说可以继续之前，不再写药效、不再强来，也别复述那个词。\n";
       // 10-23：用药不再替她发话，聊天里只有一条灰字 —— 第一次给他时说一声这瓶是她刚给的
       if(!potion.toldUsed){ potion.toldUsed = true; saveAphro(aphro); block += "（她刚刚给你用了这瓶配方，聊天里只有一行灰字，她没多说。药效从这一轮开始在你身上。）\n"; }
       const NM = names();
@@ -1174,7 +1190,7 @@ function updateStockIndex(){
     getState: () => aphro,
     statusBlock: aphrodisiacStatusPromptBlock,
     isActive,
-    clearAll, freezeControl, resumeControl, controlPhase, controlLevel, controlReadings, controlCurve, controlTotalMs,
+    clearAll, freezeControl, resumeControl, checkSafeword, controlPhase, controlLevel, controlReadings, controlCurve, controlTotalMs,
     consumeReply,
     tick: tickAphro
   };

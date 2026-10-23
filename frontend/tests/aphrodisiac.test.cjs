@@ -262,6 +262,17 @@ console.log('instant ok');
   assert.match(api.statusBlock(), /安全词「星星」/);
   context.window.APHRO_SAFEWORD = true;                   // 宿主设了，以宿主为准
   assert.doesNotMatch(api.statusBlock(), /星星/);
+  // 程序刹车：checkSafeword 认出具体的词就冻结；记忆里的（true）程序认不出
+  assert.equal(api.checkSafeword('月 亮'), false, 'true = 在宿主记忆里，程序不知道是哪个词');
+  delete context.window.APHRO_SAFEWORD;
+  assert.equal(api.checkSafeword('不要停……'), false);
+  assert.equal(api.getState().active[0].controlFrozen, false);
+  assert.equal(api.checkSafeword('星 星！'), true);
+  assert.equal(api.getState().active[0].controlFrozen, true);
+  assert.match(api.statusBlock(), /说了安全词.*冻结/); assert.doesNotMatch(api.statusBlock(), /强制|星星/);
+  api.resumeControl();
+  assert.doesNotMatch(api.statusBlock(), /说了安全词/);
+  context.window.APHRO_SAFEWORD = true;
   delete api.getState().safeword;
   console.log('safeword ok');
 }

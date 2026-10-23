@@ -37,6 +37,11 @@
     <div id="notices"></div>
     <pre id="output" aria-live="polite">选一瓶药，或者先看看提示词。</pre>
 
+    <h2>模拟她说一句</h2>
+    <p>宿主在发给模型之前调用 <code>Aphrodisiac.checkSafeword()</code>：认出安全词就冻结读数，提示词换成「停下」。</p>
+    <textarea id="her-line">……月亮。</textarea>
+    <button id="check">检查这句话</button>
+
     <h2>模拟他的一句回复</h2>
     <p>回复末尾的 <code>⟪一轮⟫</code> 会被摘掉，并记成一轮（之后几分钟是不应期）。</p>
     <textarea id="raw">*把你按回去* 「……别动。」⟪一轮⟫</textarea>
@@ -62,6 +67,12 @@
     document.getElementById("open").onclick = () => { applyHost(); Aphrodisiac.openMixPanel(); };
     document.getElementById("inspect").onclick = show;
     document.getElementById("reset").onclick = () => { if(confirm("清空本地预览数据？")){ localStorage.clear(); location.reload(); } };
+    document.getElementById("check").onclick = () => {
+      applyHost();
+      if(!Aphrodisiac.isActive()){ out.textContent = "先用一瓶药。"; return; }
+      const hit = Aphrodisiac.checkSafeword(document.getElementById("her-line").value);
+      out.textContent = (hit ? "认出了安全词，读数已冻结。下一轮发给他的是：\n\n" : "这句话里没有安全词（或者还没在调香室里设）。\n\n") + Aphrodisiac.statusBlock();
+    };
     document.getElementById("simulate").onclick = () => {
       applyHost();
       if(!Aphrodisiac.isActive()){ out.textContent = "先用一瓶药。"; return; }
