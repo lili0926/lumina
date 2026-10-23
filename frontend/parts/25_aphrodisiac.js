@@ -620,12 +620,18 @@
     return { her: her ? sp(her) : "她", him, himTag: him ? "（" + him + "）" : "" };
   }
 
-  // ── 安全词：宿主设 window.APHRO_SAFEWORD = "词"（写进规则）或 true（约定在宿主自己的记忆里）；不设调香室会提醒 ──
-  function safeword(){
+  // ── 安全词：宿主设 window.APHRO_SAFEWORD = "词"（写进规则）或 true（约定在宿主自己的记忆里）；
+  //    宿主没设，她可以在调香室里自己设一个（aphro.safeword，只存本机）；都没有调香室会提醒 ──
+  function hostSafeword(){
     let w; try{ w = typeof window !== "undefined" ? window.APHRO_SAFEWORD : undefined; }catch(e){}
-    if(w === true) return { mode:"memory" };
-    w = typeof w === "string" ? w.trim() : "";
-    return w ? { mode:"word", word:w } : { mode:"none" };
+    return w === true || (typeof w === "string" && w.trim()) ? w : null;
+  }
+  function safeword(){
+    const h = hostSafeword();
+    if(h === true) return { mode:"memory", from:"host" };
+    if(h) return { mode:"word", word:h.trim(), from:"host" };
+    const own = String(aphro.safeword || "").trim();
+    return own ? { mode:"word", word:own, from:"her" } : { mode:"none" };
   }
   function safewordClause(){
     const sw = safeword();
@@ -870,7 +876,10 @@
       .aphro-atelier .at-meter{display:grid;grid-template-columns:44px 1fr 52px;align-items:center;gap:10px;margin:7px 0;font:12px system-ui,sans-serif;color:#6f766f}.aphro-atelier .at-meter i{height:4px;border-radius:4px;background:#edf0ed;overflow:hidden;display:block}.aphro-atelier .at-meter i em{display:block;height:100%;border-radius:4px;transition:width .8s ease}.aphro-atelier .at-meter span:last-child{text-align:right;font-variant-numeric:tabular-nums;color:#4d544e}
       .aphro-atelier .at-live-rounds{margin:-4px 0 10px;font:11px system-ui,sans-serif;color:#8d958e;letter-spacing:.04em}
       .aphro-atelier .at-live-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.aphro-atelier .at-live-foot small{font:11px system-ui,sans-serif;color:#a2a6a1}.aphro-atelier .at-clear{border:1px solid #e3d6d6;background:#fff;color:#a0706f;border-radius:999px;padding:6px 14px;font-size:12px}
-      .aphro-atelier .at-sw-note{margin:14px 0 0;padding:10px 12px;border:1px dashed #e3d6d6;border-radius:10px;font:12px/1.7 system-ui,sans-serif;color:#a0706f;background:#fffafa}.aphro-atelier .at-sw-note code{font-size:11px}
+      .aphro-atelier .at-sw{margin:14px 0 0;font:12px/1.7 system-ui,sans-serif}
+      .aphro-atelier .at-sw-note{display:block;width:100%;text-align:left;padding:10px 12px;border:1px dashed #e3d6d6;border-radius:10px;color:#a0706f;background:#fffafa;font:inherit}.aphro-atelier .at-sw-note b{font-weight:500}
+      .aphro-atelier .at-sw-set{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#8d958e;letter-spacing:.04em}.aphro-atelier .at-sw-set button{border:0;background:none;color:#7d857e;font:inherit;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+      .aphro-atelier .at-sw-edit{padding:12px;border:1px solid #e6e9e5;border-radius:10px;background:#fbfcfb;color:#7d857e}.aphro-atelier .at-sw-edit p{margin:0 0 8px}.aphro-atelier .at-sw-row{display:flex;gap:8px}.aphro-atelier .at-sw-row input{flex:1;min-width:0;border:0;border-bottom:1px solid #cfd4cd;background:none;outline:none;font:15px system-ui,sans-serif;padding:6px 2px;color:#313631}.aphro-atelier .at-sw-row button{border:1px solid #cfd4cd;border-radius:999px;background:#fff;padding:5px 12px;font:12px system-ui,sans-serif;color:#515a52}.aphro-atelier .at-sw-row .at-sw-ok{background:#2b302c;border-color:#2b302c;color:#fff}
       .aphro-atelier .at-instant{display:flex;align-items:center;gap:8px;margin:14px 0 0;font:12px system-ui,sans-serif;color:#7d857e}.aphro-atelier .at-instant input{accent-color:#59605a;width:15px;height:15px;margin:0}
       .aphro-atelier .at-swap{grid-column:1/-1;justify-self:center;border:0;background:transparent;color:#8d958e;font:12px system-ui,sans-serif;padding:6px 10px}
       .aphro-atelier .at-shelf-head{display:flex;justify-content:space-between;align-items:end;padding:24px 0 10px}.aphro-atelier .at-shelf-head small{font:11px system-ui,sans-serif;color:#a2a6a1}
@@ -910,7 +919,7 @@
     <div class="at-phone" role="dialog" aria-modal="true" aria-label="调香室">
       <header class="at-nav"><button class="at-icon at-back" type="button" aria-label="返回">‹</button><div class="at-nav-title">调香室</div><button class="at-icon at-jump-shelf" type="button" aria-label="成品货架">▤</button></header>
       <main class="at-main"><div class="at-title"><input class="at-formula-name" maxlength="24" aria-label="配方名称" placeholder="给这瓶药起个名字"><span class="at-count">0 / 4</span></div>
-        <section class="at-main-view"><p class="at-sw-note" hidden>还没约定安全词：这瓶药里她的「不要」都算戏，真要停只能跳出戏说。宿主可以设 <code>window.APHRO_SAFEWORD</code>。</p><div class="at-live" hidden></div><button class="at-hero" type="button" aria-label="进入调香台"><i class="at-liquid"></i><img src="${imgUrl("atelier-empty-vial.webp")}" alt="玻璃调配瓶"><small>触碰玻璃瓶 · 进入调配 ›</small></button><div class="at-slots"></div><div class="at-scoreline"><span class="at-score-values"></span><button class="at-show-analysis" type="button">查看分析 ›</button></div><label class="at-instant"><input type="checkbox" class="at-instant-box"><span>直接起效（试药用）· 一用理智就归零，从失控开始</span></label><div class="at-shelf-head"><h3>成品货架</h3><small class="at-shelf-count"></small></div><div class="at-shelf"></div></section>
+        <section class="at-main-view"><div class="at-sw" hidden></div><div class="at-live" hidden></div><button class="at-hero" type="button" aria-label="进入调香台"><i class="at-liquid"></i><img src="${imgUrl("atelier-empty-vial.webp")}" alt="玻璃调配瓶"><small>触碰玻璃瓶 · 进入调配 ›</small></button><div class="at-slots"></div><div class="at-scoreline"><span class="at-score-values"></span><button class="at-show-analysis" type="button">查看分析 ›</button></div><label class="at-instant"><input type="checkbox" class="at-instant-box"><span>直接起效（试药用）· 一用理智就归零，从失控开始</span></label><div class="at-shelf-head"><h3>成品货架</h3><small class="at-shelf-count"></small></div><div class="at-shelf"></div></section>
         <section class="at-studio-view" hidden><p class="at-studio-intro">一瓶两味：第一味是主味，定整瓶的性格；第二味是点缀，只改一处细节。</p><div class="at-studio-work"><div class="at-feed-list"></div><div class="at-tube" role="img" aria-label="玻璃调配管"><i class="at-tube-liquid"></i><img src="${imgUrl("atelier-glass-column-empty.webp")}" alt=""></div><div class="at-stock"><div class="at-carousel-head"><h3>库存</h3><small class="at-stock-index"></small></div><div class="at-carousel"><button class="at-carousel-arrow at-prev" type="button" aria-label="上一味香材">↑</button><div class="at-reel"></div><button class="at-carousel-arrow at-next" type="button" aria-label="下一味香材">↓</button></div></div></div></section>
         <section class="at-analysis-view" hidden><div class="at-section-head"><h3>配方分析</h3><button class="at-view-main" type="button">返回配方</button></div><div class="at-analysis-grid"></div><svg class="at-timeline" viewBox="0 0 320 150" role="img" aria-label="虚构表现曲线"><line x1="5" y1="140" x2="315" y2="140" stroke="#e3e8e4"/><polyline points="5,140 82,140 159,140 236,140 313,140"/></svg><div class="at-compatibility"></div><ul class="at-issues"></ul><p class="at-fictional">仅用于虚构叙事模拟，不表示真实人体药理或起效时间。</p></section>
       </main><footer class="at-footer"><button class="at-analysis-button" type="button">查看分析</button><button class="at-save" type="button">保存配方</button><button class="at-use" type="button">使用配方</button></footer>
@@ -1073,6 +1082,29 @@ function updateStockIndex(){
       q('.at-compatibility').textContent=`兼容性：${a.compatibility}`;q('.at-issues').textContent='';a.issues.forEach(issue=>q('.at-issues').appendChild(make('li',null,issue)));
     }
     // 10-23：生效中的那瓶 —— 四条读数 + 清除药效
+    // 安全词：宿主设了就不显示（宿主说了算）；没设的话她自己在这里设，只存本机
+    function renderSafeword(editing){
+      const box=q('.at-sw');if(!box)return;const sw=safeword();box.replaceChildren();
+      if(sw.from==='host'){box.hidden=true;return;}
+      box.hidden=false;
+      if(editing){
+        const ed=make('div','at-sw-edit');ed.append(make('p',null,'设一个现实里不会随口说的词。说出它，读数冻结、他立刻停下来关心你；戏里的「不要 / 停下」都不算。只存在这台设备上。'));
+        const row=make('div','at-sw-row'),inp=make('input');inp.maxLength=16;inp.placeholder='比如：月亮';inp.value=aphro.safeword||'';
+        const ok=make('button','at-sw-ok','保存'),cancel=make('button',null,'取消');ok.type=cancel.type='button';
+        const save=()=>{const v=inp.value.trim();if(!v){inp.focus();return;}aphro.safeword=v;saveAphro(aphro);renderSafeword();};
+        ok.onclick=save;inp.onkeydown=e=>{if(e.key==='Enter')save();};cancel.onclick=()=>renderSafeword();
+        row.append(inp,ok,cancel);ed.append(row);
+        if(aphro.safeword){const del=make('button',null,'不用安全词了');del.type='button';del.style.cssText='margin-top:8px;border:0;background:none;color:#a0706f;font:12px system-ui,sans-serif;padding:0';del.onclick=()=>{delete aphro.safeword;saveAphro(aphro);renderSafeword();};ed.append(del);}
+        box.appendChild(ed);setTimeout(()=>inp.focus(),0);return;
+      }
+      if(sw.mode==='word'){
+        const line=make('div','at-sw-set'),t=make('span',null,'安全词 · 「'+sw.word+'」'),b=make('button',null,'改');b.type='button';b.onclick=()=>renderSafeword(true);
+        line.append(t,b);box.appendChild(line);return;
+      }
+      const note=make('button','at-sw-note');note.type='button';
+      note.append(make('span',null,'还没约定安全词：这瓶药里你的「不要」都算戏，真要停只能跳出戏说。'),make('b',null,'设一个 ›'));
+      note.onclick=()=>renderSafeword(true);box.appendChild(note);
+    }
     function renderLive(){
       const box=q('.at-live');if(!box)return;tickAphro();const p=aphro.active[0];
       if(!p){box.hidden=true;box.textContent='';return;}
@@ -1089,7 +1121,7 @@ function updateStockIndex(){
       clear.onclick=()=>{if(!confirm('清掉这瓶的药效？他下一轮会知道药退了。'))return;clearAll(true);renderLive();};
       foot.append(make('small',null,'他心里有数，但不会说出口'),clear);box.appendChild(foot);
     }
-    q('.at-sw-note').hidden=safeword().mode!=='none';
+    renderSafeword();
     const instantBox=q('.at-instant-box');instantBox.checked=aphro.instant===true;instantBox.onchange=()=>{aphro.instant=instantBox.checked;saveAphro(aphro);};
     const liveTimer=setInterval(()=>{if(!document.body.contains(overlay)){clearInterval(liveTimer);return;}renderLive();},15000);
     function render(){

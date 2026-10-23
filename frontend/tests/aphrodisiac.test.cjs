@@ -257,6 +257,11 @@ console.log('instant ok');
   assert.match(api.statusBlock(), /安全词「月亮」.*别说出它/);
   context.window.APHRO_SAFEWORD = true;
   assert.match(api.statusBlock(), /共同记忆里约定的安全词/);
-  context.window.APHRO_SAFEWORD = true;
+  delete context.window.APHRO_SAFEWORD;
+  api.getState().safeword = '星星';                       // 她在调香室里自己设的
+  assert.match(api.statusBlock(), /安全词「星星」/);
+  context.window.APHRO_SAFEWORD = true;                   // 宿主设了，以宿主为准
+  assert.doesNotMatch(api.statusBlock(), /星星/);
+  delete api.getState().safeword;
   console.log('safeword ok');
 }

@@ -28,7 +28,6 @@
     <div class="row">
       <label>她 <input id="her" type="text" placeholder="不填 = 她"></label>
       <label>他 <input id="him" type="text" placeholder="不填 = 不点名"></label>
-      <label>安全词 <input id="sw" type="text" placeholder="不填会提醒"></label>
     </div>
     <div class="row">
       <button id="open">打开调香室</button>
@@ -45,16 +44,15 @@
   </main>
   <script>
     // 宿主要给的：state、LS（这里用 localStorage）；可选 chatPushNotice / myDisplayName / render
-    // 可选设置：APHRO_NAMES / APHRO_SAFEWORD / APHRO_IMG_BASE（图片在 doodle/，默认就对）
+    // 可选设置：APHRO_NAMES / APHRO_SAFEWORD（不设就在调香室里让她自己设）/ APHRO_IMG_BASE（图片在 doodle/，默认就对）
     const state = { pendingUser:[], chatInput:"" };
     function chatPushNotice(t){ const d = document.createElement("div"); d.className = "notice"; d.textContent = t; document.getElementById("notices").appendChild(d); }
     function myDisplayName(){ return (document.getElementById("her").value || "她").trim(); }
     function applyHost(){
       const her = document.getElementById("her").value.trim(), him = document.getElementById("him").value.trim();
       window.APHRO_NAMES = (her || him) ? { her, him } : undefined;
-      window.APHRO_SAFEWORD = document.getElementById("sw").value.trim() || undefined;
     }
-    ["her", "him", "sw"].forEach(id => document.getElementById(id).addEventListener("input", applyHost));
+    ["her", "him"].forEach(id => document.getElementById(id).addEventListener("input", applyHost));
     applyHost();
   </script>
   <script src="parts/25_aphrodisiac.js"></script>
