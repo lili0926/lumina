@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumina · 调香室预览</title>
+  <style>
+    body { margin:0; padding:24px 16px; background:#eeeae4; color:#322b25; font:14px/1.7 system-ui,sans-serif; }
+    main { max-width:720px; margin:auto; }
+    h1 { font:400 28px Georgia,serif; margin:0 0 6px; }
+    h2 { font:400 17px Georgia,serif; margin:26px 0 8px; }
+    p { color:#776c62; margin:0 0 16px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+    button { border:1px solid #b4a89a; background:#f8f5f0; color:#322b25; border-radius:8px; padding:9px 14px; font:inherit; cursor:pointer; }
+    button:hover { background:#e8e0d6; }
+    input[type=text] { border:1px solid #cdbfae; border-radius:8px; padding:8px 10px; font:inherit; width:9em; background:#fffdfa; }
+    textarea { display:block; width:100%; min-height:80px; box-sizing:border-box; margin:8px 0; padding:12px; border:1px solid #cdbfae; border-radius:8px; background:#fffdfa; font:inherit; }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#faf8f4; border:1px solid #d5c9ba; border-radius:10px; padding:16px; min-height:120px; font-size:13px; }
+    code { background:#efe8df; padding:1px 5px; border-radius:4px; }
+    .notice { text-align:center; color:#9a9087; font-size:12px; margin:8px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Lumina · 调香室</h1>
+    <p>18+ · 成人之间的虚构角色扮演用。本地预览不会调用任何模型，只演示调香室、读数和发给模型的提示词。</p>
+
+    <div class="row">
+      <label>她 <input id="her" type="text" placeholder="不填 = 她"></label>
+      <label>他 <input id="him" type="text" placeholder="不填 = 不点名"></label>
+      <label><input id="modeC" type="checkbox"> 轮次用 C（至少几轮）</label>
+    </div>
+    <div class="row">
+      <button id="open">打开调香室</button>
+      <button id="inspect">看现在发给他的提示词</button>
+      <button id="reset">清空本地数据</button>
+    </div>
+    <div id="notices"></div>
+    <pre id="output" aria-live="polite">选一瓶药，或者先看看提示词。</pre>
+
+    <h2>模拟他的一句回复</h2>
+    <p>回复末尾的 <code>⟪一轮⟫</code> 会被摘掉，并记成一轮（之后几分钟是不应期）。</p>
+    <textarea id="raw">*把你按回去* 「……别动。」⟪一轮⟫</textarea>
+    <button id="simulate">处理这条回复</button>
+  </main>
+  <script>
+    // 宿主要给的：state、LS（这里用 localStorage）；可选 chatPushNotice / myDisplayName / render
+    const state = { pendingUser:[], chatInput:"" };
+    function chatPushNotice(t){ const d = document.createElement("div"); d.className = "notice"; d.textContent = t; document.getElementById("notices").appendChild(d); }
+    function myDisplayName(){ return (document.getElementById("her").value || "她").trim(); }
+    function applyHost(){
+      const her = document.getElementById("her").value.trim(), him = document.getElementById("him").value.trim();
+      window.APHRO_NAMES = (her || him) ? { her, him } : undefined;
+      window.APHRO_ROUND_MODE = document.getElementById("modeC").checked ? "C" : "A";
+    }
+    ["her", "him", "modeC"].forEach(id => document.getElementById(id).addEventListener("input", applyHost));
+    applyHost();
+  </script>
+  <script src="parts/25_aphrodisiac.js"></script>
+  <script>
+    const out = document.getElementById("output");
+    function show(){ applyHost(); out.textContent = Aphrodisiac.statusBlock() || "现在没有生效的配方。打开调香室，选两味，点「使用配方」。"; }
+    document.getElementById("open").onclick = () => { applyHost(); Aphrodisiac.openMixPanel(); };
+    document.getElementById("inspect").onclick = show;
+    document.getElementById("reset").onclick = () => { if(confirm("清空本地预览数据？")){ localStorage.clear(); location.reload(); } };
+    document.getElementById("simulate").onclick = () => {
+      applyHost();
+      if(!Aphrodisiac.isActive()){ out.textContent = "先用一瓶药。"; return; }
+      const cleaned = Aphrodisiac.consumeReply(document.getElementById("raw").value);
+      out.textContent = "他的话（标记摘掉后）：" + cleaned + "\n\n" + Aphrodisiac.statusBlock();
+    };
+  </script>
+</body>
+</html>
