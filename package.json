@@ -1,6 +1,6 @@
 {
   "name": "lumina-atelier",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "调香室：给 AI 伴侣 / 成人虚构 RP 用的春药配方模块（零依赖单文件）",
   "license": "CC-BY-NC-4.0",

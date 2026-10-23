@@ -27,8 +27,8 @@ const context = {
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(__dirname+'/../parts/25_aphrodisiac.js','utf8'),context);
 
-context.window.APHRO_NAMES = { her:'Jasmine', him:'Aries' };   // beilyes 传的名字
-context.window.APHRO_SAFEWORD = true;   // beilyes：安全词在他记忆里
+context.window.APHRO_NAMES = { her:'Jasmine', him:'Aries' };   // 宿主传的名字
+context.window.APHRO_SAFEWORD = true;   // 安全词约定在宿主记忆里
 const api = context.window.Aphrodisiac;
 // 默认是自然时间线（10-23 改回去）；直接起效在最后单独测
 assert.equal(api.getState().instant, false);
@@ -216,33 +216,22 @@ assert.equal(fr.sanity, 0);
 assert.ok(fast.expires > Date.now());
 console.log('instant ok');
 
-// 轮次（10-23）：A = 按时间 + 不应期；C = A + 至少几轮，不够就拖长失控
+// 轮次（10-23）：按时长 + 不应期，一轮完了药效还在就接着下一轮
 {
   const T0 = createdAt + 1000 * 60 * 600;
   const now = min => { context.Date = { now:() => T0 + min * 60000 }; };
   const R = min => { now(min); return api.controlReadings(api.getState().active[0]); };
-  api.getState().instant = false; delete context.window.APHRO_ROUND_MODE;
+  api.getState().instant = false; 
   now(0); api.clearAll(); api.injectPotion(['延','黏'], 'you');
   const before = R(60).sanity;
   now(60); assert.equal(api.consumeReply('嗯 ⟪一轮⟫'), '嗯');
   const r1 = R(61);
-  assert.equal(r1.rounds, 1); assert.ok(r1.sanity > before); assert.ok(r1.refLeft > 0); assert.equal(r1.roundMin, 0);
+  assert.equal(r1.rounds, 1); assert.ok(r1.sanity > before); assert.ok(r1.refLeft > 0); 
   assert.equal(R(75).refLeft, 0);
   now(60.5); api.consumeReply('⟪一轮⟫'); assert.equal(R(62).rounds, 1, '一分钟内重复的不算');
   assert.match(api.statusBlock(), /已经 1 轮/);
+  assert.match(api.statusBlock(), /一轮完了药效还在，就接着下一轮/); assert.doesNotMatch(api.statusBlock(), /至少要/);
 
-  context.window.APHRO_ROUND_MODE = 'C';
-  now(0); api.clearAll(); api.injectPotion(['兴'], 'you');
-  const p = api.getState().active[0], nominal = (api.controlTotalMs(Object.assign({}, p, { extMs:0 })) - 0) ;
-  const lostEnd = (() => { const ms = api.controlCurve(Object.assign({}, p, { extMs:0 })).ms; return (ms.onset + ms.descent + ms.lost) / 60000; })();
-  const late = R(lostEnd + 10);
-  assert.equal(late.stage, '失控'); assert.ok(late.dragging); assert.equal(late.roundMin, 4);
-  assert.match(api.statusBlock(), /至少要 4 轮.*已经 0 轮/);
-  [lostEnd + 11, lostEnd + 13, lostEnd + 15, lostEnd + 17].forEach(m => { now(m); api.consumeReply('⟪一轮⟫'); });
-  assert.equal(api.getState().active[0].rounds.length, 4);
-  assert.ok(api.getState().active[0].extMs > 0);
-  assert.notEqual(R(lostEnd + 17 + 30).stage, '失控', '够数以后照时间往下走');
-  delete context.window.APHRO_ROUND_MODE;
   console.log('rounds ok');
 }
 

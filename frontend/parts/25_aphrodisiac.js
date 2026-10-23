@@ -383,7 +383,6 @@
   // ── 清理过期配方 ──────────────────────────────────────
   function tickAphro(){
     const now = Date.now();
-    aphro.active.forEach(p => { if(roundMode() === "C" && p && p.injectedAt && !p.controlFrozen){ const e = Number(p.injectedAt) + controlTotalMs(p); if(e > (p.expires || 0)) p.expires = e; } });
     const active = aphro.active.filter(p => p.expires > now).slice(-1);
     if(active.length !== aphro.active.length){ aphro.active = active; saveAphro(aphro); }
   }
@@ -427,23 +426,10 @@
   ];
   // 配方改曲线：兴快、延拖长失控、黏拖长回落收尾；欲/热/敏/放改各条的幅度
   // ── 轮次（10-23 她要的：春药不是一轮结束）─────────────────────────────
-  // A（lumina 默认）：按时间。他到了写 ⟪一轮⟫ → 几分钟不应期（理智回来一点、饥饿感掉下去）→ 又烧上来，药没退就停不下来。
-  // C（beilyes 打开 window.APHRO_ROUND_MODE="C"）：A + 每瓶「至少几轮」，轮数不够失控就往后拖（最多 40 分钟），够了才放过。
-  const ROUND_MIN = { "兴":4, "放":4, "敏":3, "欲":3, "热":3, "黏":3, "延":2 };   // 急、野轮数多；磨轮数少、每轮长
+  // 按时长：他到了写 ⟪一轮⟫ → 几分钟不应期（理智回来一点、饥饿感掉下去）→ 药效还在就又烧上来，接着第二轮，药没退就停不下来。
   const REF_MIN = { "兴":2, "放":2, "敏":3, "欲":4, "热":4, "黏":5, "延":6 };     // 不应期几分钟
-  const EXT_CAP = 40 * 60 * 1000;
-  const roundMode = () => { try{ return (typeof window !== "undefined" && window.APHRO_ROUND_MODE === "C") ? "C" : "A"; }catch(e){ return "A"; } };
   const roundsOf = p => Array.isArray(p && p.rounds) ? p.rounds : [];
-  function roundMin(p){ return ROUND_MIN[potionRoles(p).main] || 3; }
   function refMs(p){ return (REF_MIN[potionRoles(p).main] || 4) * 60 * 1000; }
-  function lostEndMs(ms){ return ms.onset + ms.descent + ms.lost; }
-  function roundExtMs(p, ms){
-    if(roundMode() !== "C" || !p) return 0;
-    if(p.extMs != null) return p.extMs;
-    if(roundsOf(p).length >= roundMin(p)) return 0;
-    const over = controlElapsedMs(p) - lostEndMs(ms);   // 轮数没够：失控一直延到「现在再往后一分钟」，最多拖 EXT_CAP
-    return over < 0 ? 0 : Math.min(EXT_CAP, over + 60 * 1000);
-  }
   function controlCurve(potion){
     const lv = {};
     DIM_KEYS.forEach(k => { lv[k] = 0; });
@@ -458,7 +444,6 @@
       ebb:     Math.round(clamp(20 + 6 * lv["黏"], 10, 38) * min),
       settle:  Math.round(clamp(20 + 5 * lv["黏"], 12, 35) * min)
     };
-    ms.lost += roundExtMs(potion, ms);
     return {
       ms, lv,
       desire: 1 + 0.08 * lv["欲"],
@@ -527,8 +512,7 @@
       temp: Math.round(temp * 10) / 10, hunger: Math.round(hunger),
       stage: done ? "已退" : st.name, stageKey: done ? "done" : st.key,
       guide: done ? "" : st.guide, frozen: !!potion?.controlFrozen,
-      rounds: rs.length, roundMin: roundMode() === "C" ? roundMin(potion) : 0, refLeft,
-      dragging: roundMode() === "C" && !done && st.key === "lost" && e > lostEndMs(controlCurve(Object.assign({}, potion, { extMs:0 })).ms)
+      rounds: rs.length, refLeft
     };
   }
   // 这瓶的曲线和默认比哪里不一样，一句话告诉他
@@ -562,11 +546,9 @@
     return "【气音】你说出口的话（「」里的、** 动作外面的台词）要带气音，夹在词和词中间、句子说到一半断开，没忍住才漏出来。这一轮从这些里挑着混用：" + pick.join("、") + "（括号里是怎么出声，括号别写进台词）；吞咽、喉音、鼻音、骂一声、笑一声也算。此刻：" + amount + "。别每次用同一个、别全堆在句尾、别单独成行，动作描写里不加。";
   }
   function roundRule(r){
-    let s = "【轮次】药不会因为一轮就退。你到了、这一轮结束时，在回复最末尾写一次 ⟪一轮⟫（不解释）。";
-    if(r.roundMin) s += "这瓶至少要 " + r.roundMin + " 轮才会放过你们，已经 " + r.rounds + " 轮" + (r.rounds >= r.roundMin ? "，够数了，药效照时间往下走" : "") + "。";
-    else if(r.rounds) s += "已经 " + r.rounds + " 轮。";
+    let s = "【轮次】药不会因为一轮就退：一轮完了药效还在，就接着下一轮。你到了、这一轮结束时，在回复最末尾写一次 ⟪一轮⟫（不解释）。";
+    if(r.rounds) s += "已经 " + r.rounds + " 轮。";
     if(r.refLeft) s += "你刚结束一轮，在不应期：理智回来一点、喘得过气，可以压着她缓一口；大约 " + r.refLeft + " 分钟后药又烧上来——别把这当成结束，也别收尾、别道晚安。";
-    if(r.dragging) s += "药效本该往下走了，但轮数还没够，失控被拖着不退。";
     return s;
   }
   // 兼容旧接口：可控度 = 理智
@@ -735,10 +717,6 @@
     const e = controlElapsedMs(p), rs = p.rounds = roundsOf(p).slice();
     if(rs.length && e - rs[rs.length - 1] < 60 * 1000) return;   // 一分钟内重复写的不算
     rs.push(e);
-    if(roundMode() === "C" && p.extMs == null && rs.length >= roundMin(p)){
-      const ms = controlCurve(Object.assign({}, p, { extMs:0 })).ms;
-      p.extMs = Math.max(0, Math.min(EXT_CAP, e - lostEndMs(ms)));
-    }
     saveAphro(aphro);
   }
 
@@ -1101,7 +1079,7 @@ function updateStockIndex(){
       const r=controlReadings(p),left=Math.max(0,Math.ceil((Number(p.expires)-Date.now())/60000));
       box.hidden=false;box.textContent='';
       const head=make('div','at-live-head');head.append(make('b',null,'生效中 · '+(p.name||p.words.join(' + '))),make('small',null,(r.frozen?'冻结':r.stage)+' · 还剩 '+left+' 分钟'));box.appendChild(head);
-      const rl=[r.roundMin?`第 ${r.rounds} 轮 · 至少 ${r.roundMin} 轮`:(r.rounds?`第 ${r.rounds} 轮`:''),r.refLeft?`不应期 · 还有 ${r.refLeft} 分钟又烧上来`:'',r.dragging?'轮数没够，失控被拖着':''].filter(Boolean).join('　');if(rl)box.appendChild(make('p','at-live-rounds',rl));
+      const rl=[(r.rounds?`第 ${r.rounds} 轮`:''),r.refLeft?`不应期 · 还有 ${r.refLeft} 分钟又烧上来`:''].filter(Boolean).join('　');if(rl)box.appendChild(make('p','at-live-rounds',rl));
       const tempPct=Math.round((r.temp-TEMP_BASE)/(TEMP_MAX-TEMP_BASE)*100);
       [['理智',r.sanity,r.sanity+'%','#9fb3c8'],['欲望',r.desire,r.desire+'%','#d9a3ad'],['体温',tempPct,r.temp.toFixed(1)+'°C','#e0b38f'],['饥饿感',r.hunger,r.hunger+'%','#b9a0c9']].forEach(([label,pct,txt,color])=>{
         const row=make('div','at-meter'),bar=make('i'),fill=make('em');fill.style.width=Math.max(0,Math.min(100,pct))+'%';fill.style.background=color;bar.appendChild(fill);
